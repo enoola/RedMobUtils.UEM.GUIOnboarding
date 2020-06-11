@@ -137,7 +137,7 @@ $logFile = "$logPath\OnBoarderGUI_$(get-date -Format dMHHMMss).log"
 write-host $logFile
 #New-LogMessage "=============== Début d'execution du script.....  ================================================================="
 Write-UEMLogLine -Filename $logFile -Line "=============== Début d'execution du script.....  ================================================================="
-Exit
+
 #endregion Timing in
 Write-UEMLogLine
 
@@ -312,7 +312,7 @@ $global:gGLBUEMW10 = $null              #from createGroup function
 $global:gGLBUEMUsers = $null            #from createGroup function
 
 write-host "Valdation passed: $ValidationOK"
-New-LogMessage "INFO : Valdation passed: $ValidationOK"
+Write-UEMLogLine -Filename $logFile -Line "INFO : Valdation passed: $ValidationOK"
 
 #Write your logic code here
 $Validate.Add_Click({ Validate_Function })
@@ -334,18 +334,18 @@ Function Validate_Function
     $szPattern = '/^A[^ABCHJKNPVY]|B[^CKPUX]|C[^BEJPQST]|D[EJKMOZ]|E[CEGHRST]|F[IJKMOR]|G[^CJKOVXZ]|H[KMNRTU]|I[DEL-OQ-T]|J[EMOP]|K[EGHIMNPRWYZ]|L[ABCIKR-VY]|M[^BIJ]|N[ACEFGILOPRUZ]|OM|P[AE-HK-NRSTWY]|QA|R[EOSUW]|S[^FPQUW]|T[^ABEIPQSUXY]|U[AGMSYZ]|V[ACEGINU]|WF|WS|YE|YT|Z[AMW]$/i'
     
     Write-host "User clicked on Validate"
-    New-LogMessage "INFO : User clicked on Validate"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : User clicked on Validate"
 
     If ($Country_Selected -match $szPattern -and $Country_Selected.Length -eq 2) {
         $CountryValidated = $true
         $global:gCountry = $Country_Selected
         write-host "User selected country: $Country_Selected" -ForegroundColor Green
-        New-LogMessage "INFO : User selected country: $Country_Selected"
-        New-LogMessage "INFO : Country Validation passed: $CountryValidated"
+        Write-UEMLogLine -Filename $logFile -Line "INFO : User selected country: $Country_Selected"
+        Write-UEMLogLine -Filename $logFile -Line "INFO : Country Validation passed: $CountryValidated"
     } Else {
         write-host "User selected country: $Country_Selected" -ForegroundColor Red
-        New-LogMessage "WARNING : User selected country: $($Country_Selected)"
-        New-LogMessage "WARNING : Country Validation passed: $CountryValidated"
+        Write-UEMLogLine -Filename $logFile -Line "WARNING : User selected country: $($Country_Selected)"
+        Write-UEMLogLine -Filename $logFile -Line "WARNING : Country Validation passed: $CountryValidated"
     }
 
     $EntityValidated= $false
@@ -357,12 +357,12 @@ Function Validate_Function
         $EntityValidated= $true
         $global:gEntity = $Entity_Selected
         Write-host "User selected Entity: $($Entity_Selected)" -ForegroundColor Green
-        New-LogMessage "INFO : User selected Entity: $($Entity_Selected)"
-        New-LogMessage "INFO : Entity Validation : $EntityValidated"
+        Write-UEMLogLine -Filename $logFile -Line "INFO : User selected Entity: $($Entity_Selected)"
+        Write-UEMLogLine -Filename $logFile -Line "INFO : Entity Validation : $EntityValidated"
     } Else {
         Write-host "User selected Entity: $($Entity_Selected)" -ForegroundColor Red
-        New-LogMessage "WARNING: User selected Entity: $($Entity_Selected)" 
-        New-LogMessage "WARNING : Country Validation passed: $EntityValidated"   
+        Write-UEMLogLine -Filename $logFile -Line "WARNING: User selected Entity: $($Entity_Selected)" 
+        Write-UEMLogLine -Filename $logFile -Line "WARNING : Country Validation passed: $EntityValidated"   
     }
 
 
@@ -371,11 +371,11 @@ Function Validate_Function
         $ValidationOK = $true
         $global:gEntityScopeTag = $gCountry + " - " + $gEntity + " - ScopeTag"
         Write-host "User selected : $($Country_Selected) and $($Entity_Selected) " -ForegroundColor Green
-        New-LogMessage "INFO : User selected : $($Country_Selected) and $($Entity_Selected) "
+        Write-UEMLogLine -Filename $logFile -Line "INFO : User selected : $($Country_Selected) and $($Entity_Selected) "
         write-host "Valdation passed: $ValidationOK" -ForegroundColor Green
-        New-LogMessage "INFO : Valdation passed: $ValidationOK"
+        Write-UEMLogLine -Filename $logFile -Line "INFO : Valdation passed: $ValidationOK"
         Write-host "Entity Scope Tag initiated with value : $gEntityScopeTag " -ForegroundColor Green
-        New-LogMessage "INFO : Entity Scope Tag initiated with value : $gEntityScopeTag"
+        Write-UEMLogLine -Filename $logFile -Line "INFO : Entity Scope Tag initiated with value : $gEntityScopeTag"
 
         #Here you show your buttons
         $Validate.BackColor              = "#7ed321"
@@ -398,13 +398,13 @@ Function Validate_Function
 Function Lauch_Viewer_Function 
 {
     Start-Process -FilePath C:\windows\CMTrace.exe $logFile
-    New-LogMessage "INFO : User selected to launch CMTRACE"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : User selected to launch CMTRACE"
 }
 
 
 Function Assign_Roles_Function
 {
-    New-LogMessage "INFO : NOT IMPLEMENTED YET : User selected to launch Assign Roles"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : NOT IMPLEMENTED YET : User selected to launch Assign Roles"
 # needs variables: AdminRoleId, ReportRoleId, SupportRoleId, Entity Groups Ids, Entity ScopeTagId
 #create Admin assignement and target Member :Entity-Uem-Admins group, scope is Entity-UEM-Devices and Entity-UEM-Users, scope tag is EntityScopeTag
 #create Reporting assignement and target Member: Entity-Uem-Reporting group, scope is Entity-UEM-Devices and Entity-UEM-Users, scope tag is EntityScopeTag
@@ -442,16 +442,16 @@ Function New-IntuneBetaScopeTag ()
 
 Function Add_Tags_Function
 {
-    New-LogMessage "INFO : User selected to launch Add Tags"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : User selected to launch Add Tags"
     Write-host "Entity Scope Tag is : $gEntityScopeTag" -ForegroundColor Green
-    New-LogMessage "INFO: Entity Scope Tag is : $gEntityScopeTag"
+    Write-UEMLogLine -Filename $logFile -Line "INFO: Entity Scope Tag is : $gEntityScopeTag"
     try {
         New-IntuneBetaScopeTag -ScopeTagName $gEntityScopeTag
         Write-host "Entity Scope Tag Created : $gEntityScopeTag" -ForegroundColor Green
-        New-LogMessage "INFO: Entity Scope Tag Created : $gEntityScopeTag"}
+        Write-UEMLogLine -Filename $logFile -Line "INFO: Entity Scope Tag Created : $gEntityScopeTag"}
     Catch {
         Write-host "Error: Error creating ScopeTag $gEntityScopeTag " -foregroundcolor Red
-        New-LogMessage "Error: Error creating ScopeTag $gEntityScopeTag"}
+        Write-UEMLogLine -Filename $logFile -Line "Error: Error creating ScopeTag $gEntityScopeTag"}
 }
     
     
@@ -460,14 +460,14 @@ Function Add_Tags_Function
 
 Function Create_Groups_Function
 {
-    New-LogMessage "INFO : User selected to launch Create Groups"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : User selected to launch Create Groups"
     $Country_Selected = $TextBoxCountry.text
     $Country = $Country_Selected.ToUpper()
 
     $Entity_Selected = $TextBoxEntity.text
     $Entity = $Entity_Selected.ToUpper()
 
-    New-LogMessage "INFO : Country = $Country and Entity = $Entity"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : Country = $Country and Entity = $Entity"
     # Create Devices Groups Names
         $UEMUsers = "SG.AZ." + $Country + "." + $Entity + "-UEM-Users"
         $UEMKeyUsers = "SG.AZ." + $Country + "." + $Entity + "-UEM-Key-Users"
@@ -500,27 +500,27 @@ Function Create_Groups_Function
                     $GroupExists = Get-AzureADGroup -SearchString $GroupName
                     if ($NULL -ne $GroupExists) 
                             {Write-Host "Warning: Group $($GroupName) already exists." -foregroundcolor Yellow
-                            New-LogMessage "Warning: Group $($GroupName) already exists."}
+                            Write-UEMLogLine -Filename $logFile -Line "Warning: Group $($GroupName) already exists."}
                     else {
                             #Create Group
                             try {
                                 New-AzureADGroup -DisplayName $GroupName -MailEnabled $false -MailNickName $GroupName -SecurityEnabled $true
                                 Write-host "Info: Group $($GroupName) created." -foregroundcolor Green
-                                New-LogMessage "Info: Group $($GroupName) created."}
+                                Write-UEMLogLine -Filename $logFile -Line "Info: Group $($GroupName) created."}
                             Catch {
                                 Write-host "Error: Error creating Group $($GroupName) " -foregroundcolor Red
-                                New-LogMessage "Error: Error creating Group $($GroupName)"}
+                                Write-UEMLogLine -Filename $logFile -Line "Error: Error creating Group $($GroupName)"}
                             #Add Owners        
                             try {
                                 Add-AzureADGroupOwner -ObjectId (Get-AzureADGroup -SearchString $GroupName).ObjectID -RefObjectId (Get-AzureADUser -SearchString '_pjoubert.AZ').ObjectID
                                 Write-host "Info: _pjoubert.AZ added as owner of Group $($GroupName)." -foregroundcolor Green
-                                New-LogMessage "Info: _pjoubert.AZ added as owner of Group $($GroupName)."
+                                Write-UEMLogLine -Filename $logFile -Line "Info: _pjoubert.AZ added as owner of Group $($GroupName)."
                                 Add-AzureADGroupOwner -ObjectId (Get-AzureADGroup -SearchString $GroupName).ObjectID -RefObjectId (Get-AzureADUser -SearchString '_jpigeret.AZ').ObjectID
                                 Write-host "Info: _jpigeret.AZ added as owner of Group $($GroupName)." -foregroundcolor Green
-                                New-LogMessage "Info: _jpigeret.AZ added as owner of Group $($GroupName)."}
+                                Write-UEMLogLine -Filename $logFile -Line "Info: _jpigeret.AZ added as owner of Group $($GroupName)."}
                             catch {
                                 Write-host "Error: PJO/JPI NOT added as owners of Group $($GroupName)." -foregroundcolor Red
-                                New-LogMessage "Error: PJO/JPI NOT added as owners of Group $($GroupName)."}
+                                Write-UEMLogLine -Filename $logFile -Line "Error: PJO/JPI NOT added as owners of Group $($GroupName)."}
                         }
                 }
 
@@ -533,10 +533,10 @@ Function Create_Groups_Function
         try {   
                 Add-AzureADGroupMember -ObjectId $((Get-AzureADGroup -SearchString $Parent).ObjectID) -RefObjectId $((Get-AzureADGroup -SearchString $Child).ObjectID) 
                 Write-host "Info: Group $($Child) was Added to $($Parent) Group." -foregroundcolor Green
-                New-LogMessage "Info: Group $($Child) was Added to $($Parent) Group."}
+                Write-UEMLogLine -Filename $logFile -Line "Info: Group $($Child) was Added to $($Parent) Group."}
             Catch {
                 Write-host "Error: Group $($Child) NOT Added to $($Parent) Group." -foregroundcolor Red
-                New-LogMessage "Error: Group $($Child) NOT Added to $($Parent) Group."}
+                Write-UEMLogLine -Filename $logFile -Line "Error: Group $($Child) NOT Added to $($Parent) Group."}
     }
 
     #Nests IOS,Android and W10 groups into Devices parent group
@@ -556,22 +556,22 @@ Function Create_Groups_Function
 
 Function Devices_To_Groups_Function
 {
-    New-LogMessage "INFO : NOT IMPLEMENTED YET : User selected to launch Devices to Groups"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : NOT IMPLEMENTED YET : User selected to launch Devices to Groups"
     #list Users from Entity-UEM-Users
     #for each user in group, find devices enrolled and assign tag
 }
 
 Function Onboard_Complete_Function 
 {
-    New-LogMessage "INFO : User selected to launch Total Onboarding"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : User selected to launch Total Onboarding"
     
-    New-LogMessage "INFO : Creating Groups..."
+    Write-UEMLogLine -Filename $logFile -Line "INFO : Creating Groups..."
     Create_Groups_Function
-    New-LogMessage "INFO : Done Creating Groups!"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : Done Creating Groups!"
 
-    New-LogMessage "INFO : Creating Scope Tag..."
+    Write-UEMLogLine -Filename $logFile -Line "INFO : Creating Scope Tag..."
     Add_Tags_Function
-    New-LogMessage "INFO :Done  Creating Scope Tag!"
+    Write-UEMLogLine -Filename $logFile -Line "INFO :Done  Creating Scope Tag!"
 }
 
 
@@ -579,7 +579,7 @@ Function Onboard_Complete_Function
 #Cancel Button closes form cleanly
 Function Exit_Cancel
 {
-    New-LogMessage "INFO : User selected to Exit/Cancel"
+    Write-UEMLogLine -Filename $logFile -Line "INFO : User selected to Exit/Cancel"
     $Cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
     $EntityOnboarder.CancelButton = $cancel
     $EntityOnboarder.Controls.Add($cancel)
@@ -596,6 +596,6 @@ $StopScript = Get-Date
 $timespan = new-timespan -seconds $(($StopScript-$startScript).totalseconds) 
 $ScriptTime = '{0:00}h:{1:00}m:{2:00}s' -f $timespan.Hours,$timespan.Minutes,$timespan.Seconds
 #
-New-LogMessage "============ Fin d'execution du script..... en $ScriptTime ========================================================"
+Write-UEMLogLine -Filename $logFile -Line "============ Fin d'execution du script..... en $ScriptTime ========================================================"
 #endregion Timing Out
 #=================================================########### 
