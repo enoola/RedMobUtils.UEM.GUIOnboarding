@@ -104,5 +104,42 @@ $creds = New-Object -TypeName System.Management.Automation.PSCredential -Argumen
 Connect-MSGraph -PSCredential $creds
 Connect-IntuneBeta -Username $adminUsername -Password $adminPassword -Domain 'tsodexo.com'
 Connect-AzureAD -Credential $creds
-Get-IntuneBetaAcquiredAuthToken
+#Get-IntuneBetaAcquiredAuthToken
 
+Write-Host 'letsmove on'
+
+
+#Write-Host 'Lol->' $hGroupIds['SG.AZ.FR.OSS-UEM-Users']
+Function GetGroupAADIdsList
+{
+    $lGroupNames = Get-UEMGroupNames -Country $gCountry -Entity $gEntity
+    $hGroupIds = @{}
+    Foreach ($oneGroupName in $lGroupNames.Values)
+    {
+        $GroupObject = Get-AzureADGroup -SearchString $oneGroupName
+        $hGroupIds.add($oneGroupName, $GroupObject.ObjectId)
+    }
+
+    <#
+    $hGroupIds.keys | ForEach-Object{
+        $message = '{0} is {1} has id!' -f $_, $hGroupIds[$_]
+        Write-Output $message
+    }
+    #>
+
+    Return $hGroupIds
+}
+$gListGroupNames = Get-UEMGroupNames -Country 'BR' -Entity 'OSS'
+$gListGroupIds = GetGroupAADIdsList
+
+$gListGroupIds.keys | ForEach-Object{
+    $message = '{0} is {1} has id!' -f $_, $gListGroupIds[$_]
+    Write-Output $message
+}
+
+#foreach ($onegroupid in $gListGroupIds.values) {
+#    write-host '--> '$onegroupid
+#}
+
+Write-Host "groupname"$gListGroupNames['Devices']
+Write-Host "-Id "$oResNewRoleScopeTag.id" -GroupId "$gListGroupIds[ $gListGroupNames['Devices'] ]
