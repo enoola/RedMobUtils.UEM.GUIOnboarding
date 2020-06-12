@@ -415,8 +415,32 @@ Function Lauch_Viewer_Function
 
 Function Assign_Roles_Function
 {
+    Write-Host "Assigning role to entity admins and others"
     Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : NOT IMPLEMENTED YET : User selected to launch Assign Roles"
-# needs variables: AdminRoleId, ReportRoleId, SupportRoleId, Entity Groups Ids, Entity ScopeTagId
+    # needs variables: AdminRoleId, ReportRoleId, SupportRoleId, Entity Groups Ids, Entity ScopeTagId
+    #get intune role definitions (Global Ones...)
+    #We need to seek if role assignement exists already
+    #also gather rolescopetag id 
+    $szRoleDefinitionName = Get-UEMRoleDefinitionName -ForWhom 'EntityAdmins'
+    $oRoleDefinitionGLBEntityAdmins = Get-IntuneRoleDefinition | Where-Object {($_.displayName).equals($szRoleDefinitionName)}
+    $oRoleDefinitionGLBEntityAdmins
+    Write-Host "Now we will see if role already exists..."
+    If ($null -eq $oRoleDefinitionGLBEntityAdmins ) {
+        Write-Host "Impossible to find the Role Definition named : 'GLB - Role - EntityAdmins'"
+        Return
+    }
+    Write-Host "Now we will see if role assignment already exists..."
+    $szRoleAssignmentName = Get-UEMRoleAssignmentName -Country $global:g -ForWhom 'EntityAdmins'
+    $oRoleAssignmentEntityAdmins = Get-IntuneRoleDefinition | Where-Object {($_.displayName).equals("GLB - Role - EntityAdmins")}
+    $oRoleAssignmentEntityAdmins
+    If ($null -ne $oRoleAssignmentEntityAdmins ) {
+        Write-Host "The Role Assignment you want to create already exists... abording."
+        Return
+    }
+    #From now on we know roleDefinition exists and RoleAssignment doesn't for this pecular entity
+    ##New-IntuneBetaRoleAssignment
+
+
 #create Admin assignement and target Member :Entity-Uem-Admins group, scope is Entity-UEM-Devices and Entity-UEM-Users, scope tag is EntityScopeTag
 #create Reporting assignement and target Member: Entity-Uem-Reporting group, scope is Entity-UEM-Devices and Entity-UEM-Users, scope tag is EntityScopeTag
 #create Support assignement and target Member :Entity-Uem-Support group, scope is Entity-UEM-Devices and Entity-UEM-Users, scope tag is EntityScopeTag
@@ -457,7 +481,7 @@ Function Add_Tags_Function
     Write-host "Entity Scope Tag is : $global:gEntityScopeTag" -ForegroundColor Green
     Write-UEMLogLine -Filename $global:gLogFile -Line "INFO: Entity Scope Tag is : $global:gEntityScopeTag"
 
-    #try {
+    try {
         #New-IntuneBetaScopeTag -ScopeTagName $global:gEntityScopeTag
         $oResNewRoleScopeTag = New-IntuneBetaRoleScopeTag -Name $global:gEntityScopeTag
         If ($oResNewRoleScopeTag.GetType().fullname -eq 'System.String')
@@ -497,11 +521,11 @@ Function Add_Tags_Function
                 Write-UEMLogLine -Filename $global:gLogFile -Line "INFO: $szLogLine"
             }
         }
-    #}
-    #Catch {
-    #    Write-host "EError: Error creating ScopeTag $global:gEntityScopeTag " -foregroundcolor Red
-    #    Write-UEMLogLine -Filename $global:gLogFile -Line "EError: Error creating ScopeTag $global:gEntityScopeTag"
-    #}
+    }
+    Catch {
+        Write-host "EError: Error creating ScopeTag $global:gEntityScopeTag " -foregroundcolor Red
+        Write-UEMLogLine -Filename $global:gLogFile -Line "EError: Error creating ScopeTag $global:gEntityScopeTag"
+    }
 }
     
     
