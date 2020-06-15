@@ -1,6 +1,11 @@
 ﻿<# 
+.AUTHORS
+    Pierre Emmanuel JOUBERT
+    John PIGERET
 .NAME
     EntityOnboarder GUI
+.THANKS
+
 #>
 Function New-LogMessage(){
     Param ($Message = ".")
@@ -209,7 +214,7 @@ $Devices.Font                    = 'Microsoft Sans Serif,10'
 $Devices.Visible                 = $false
 
 $Roles                           = New-Object system.Windows.Forms.Button
-#$Roles.BackColor                 = "#4a90e2"
+$Roles.BackColor                 = "#4a90e2"
 $Roles.text                      = "Roles"
 $Roles.width                     = 80
 $Roles.height                    = 30
@@ -401,8 +406,10 @@ Function Validate_Function
         $Groups.Visible                  = $true
         $EntityOnboarder.Refresh()
 
-    }   
-    $global:gListGroupNames = Get-UEMGroupNames -Country $global:gCountry -Entity $global:gEntity
+    }
+    If ($true -eq $EntityValidated) {
+        $global:gListGroupNames = Get-UEMGroupNames -Country $global:gCountry -Entity $global:gEntity
+    }
 }
 
 
@@ -423,27 +430,87 @@ Function Assign_Roles_Function
     #also gather rolescopetag id 
     $szRoleDefinitionName = Get-UEMRoleDefinitionName -ForWhom 'EntityAdmins'
     $oRoleDefinitionGLBEntityAdmins = Get-IntuneRoleDefinition | Where-Object {($_.displayName).equals($szRoleDefinitionName)}
-    $oRoleDefinitionGLBEntityAdmins
+    
     Write-Host "Now we will see if role already exists..."
     If ($null -eq $oRoleDefinitionGLBEntityAdmins ) {
-        Write-Host "Impossible to find the Role Definition named : 'GLB - Role - EntityAdmins'"
+        $szLine = "Impossible to find the Role Definition named : 'GLB - Role - EntityAdmins'"
+        Write-Host $szLine
+        Write-UEMLogLine -Filename $global:gLogFile -Line "ERROR : $szLine"
         Return
     }
     Write-Host "Now we will see if role assignment already exists..."
-    $szRoleAssignmentName = Get-UEMRoleAssignmentName -Country $global:g -ForWhom 'EntityAdmins'
-    $oRoleAssignmentEntityAdmins = Get-IntuneRoleDefinition | Where-Object {($_.displayName).equals("GLB - Role - EntityAdmins")}
-    $oRoleAssignmentEntityAdmins
+    $szRoleAssignmentName = Get-UEMRoleAssignmentName -Country $global:gCountry -Entity $global:gEntity -ForWhom 'EntityAdmins'
+    $oRoleAssignmentEntityAdmins = Get-IntuneRoleAssignment | Where-Object {($_.displayName).equals($szRoleAssignmentName)}
     If ($null -ne $oRoleAssignmentEntityAdmins ) {
-        Write-Host "The Role Assignment you want to create already exists... abording."
+        $szLine = "The Role Assignment you want to create already exists... abording."
+        Write-Host $szLine
+        Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
         Return
     }
-    #From now on we know roleDefinition exists and RoleAssignment doesn't for this pecular entity
-    ##New-IntuneBetaRoleAssignment
+    if ($null -eq $global:gListGroupIds) {
+        $global:gListGroupIds = GetGroupAADIdsList
+    }
+    #lol
+    #Write-Host 'EntityAdmins '$global:gListGroupIds[$global:gListGroupNames['EntityAdmins']]
+    #Write-Host 'Users '$global:gListGroupIds[$global:gListGroupNames['Users']]
+    #Write-Host 'Devices '$global:gListGroupIds[$global:gListGroupNames['Devices']]
+    #From now on we know roleDefinition exists and RoleAssignment doesn't for this
+    $szLine = 'Will Create the new RoleAssignemt ' + $szRoleAssignmentName
+    Write-Host $szLine
+    Write-UEMLogLine -Filename $global:gLogFile -Line $szLine
+    New-IntuneBetaRoleAssignment -RoleDefinitionId $oRoleDefinitionGLBEntityAdmins.id `
+    -DisplayName $szRoleAssignmentName -Description $szRoleAssignmentName `
+    -AdminGroupsIds @($global:gListGroupIds[$global:gListGroupNames['EntityAdmins']]) `
+    -ScopeMembersGroupsIds @($global:gListGroupIds[$global:gListGroupNames['Users']], $global:gListGroupIds[$global:gListGroupNames['Devices']])  
 
+    #get id of the created roleassignment
+    $oRoleAssignmentEntityAdmins = Get-IntuneRoleAssignment | Where-Object {($_.displayName).equals($szRoleAssignmentName)}
+    If ($null -eq $oRoleAssignmentEntityAdmins) {
+        $szLine = 'RoleAssignment creation Error.'
+        Write-Host $szLine
+        Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
+        Return
+    }
+    $szLine = 'RoleAssignment with name : '+$szRoleAssignmentName+' created.'
+    Write-Host $szLine
+    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
 
-#create Admin assignement and target Member :Entity-Uem-Admins group, scope is Entity-UEM-Devices and Entity-UEM-Users, scope tag is EntityScopeTag
-#create Reporting assignement and target Member: Entity-Uem-Reporting group, scope is Entity-UEM-Devices and Entity-UEM-Users, scope tag is EntityScopeTag
-#create Support assignement and target Member :Entity-Uem-Support group, scope is Entity-UEM-Devices and Entity-UEM-Users, scope tag is EntityScopeTag
+    $oListRoleScopeTags = Get-IntuneBetaRoleScopeTags
+    $nRoleScopeTagId = 0
+    $szRoleScopeTagName = Get-UEMRoleScopeTagName -Country $global:gCountry -Entity $global:gEntity
+    Foreach ($oneObj in $oListRoleScopeTags) {
+        If ($oneObj.displayName -eq $szRoleScopeTagName ) {
+            $nRoleScopeTagId = $oneObj.id
+            Break
+        }
+    }
+    If ($nRoleScopeTagId -eq 0) {
+        $szLine = 'Role Scope Tag with name '+$szRoleScopeTagName + ' not found, abording.'
+        Write-Host $szLine
+        Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
+        Return
+    }
+    #now we want to put the scopeTag
+    $szLine = 'Will exexute AddIntuneBetaRoleAssignmentRoleScopeTag -Id '+$oRoleAssignmentEntityAdmins.id+' -RoleScopeTagId '+$nRoleScopeTagId
+    Write-Host $szLine
+    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
+
+    Add-IntuneBetaRoleAssignmentRoleScopeTag -Id $oRoleAssignmentEntityAdmins.id -RoleScopeTagId $nRoleScopeTagId
+
+    $oRoleAssignmentRoleScopeTag = Get-IntuneBetaRoleAssignmentRoleScopeTags -Id $oRoleAssignmentEntityAdmins.id
+    If ($null -eq $oRoleAssignmentRoleScopeTag) {
+        $szLine = 'Error when assigning Scope ' + $szRoleScopeTagName + '' + $szRoleAssignmentName
+        Write-Host $szLine
+        Write-UEMLogLine -Filename $global:gLogFile -Line "ERROR : $szLine"
+        Return
+    
+    }
+
+    $szLine = 'Scope tag '+$szRoleScopeTagName+' with Id: '+$oRoleAssignmentRoleScopeTag.id+' has been assgined to : '+$oRoleAssignmentEntityAdmins.displayName
+    Write-Host $szLine
+    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
+    
+    Return
 }
 
 
@@ -508,7 +575,7 @@ Function Add_Tags_Function
             }
 
             Write-Host "Will Invoke New-IntuneBetaRoleScopeTagGroupAssignment -Id "$oResNewRoleScopeTag.id" -GroupId "$global:gListGroupIds[$global:gListGroupNames['Devices']]
-            $oResAssign = New-IntuneBetaRoleScopeTagGroupAssignment -Id $oResNewRoleScopeTag.id -GroupId $global:gListGroupIds[$global:gListGroupNames['Devices']]
+            $oResAssign = New-IntuneBetaRoleScopeTagGroupAssignment -Id $oResNewRoleScopeTag.id -GroupId $global:gListGroupIds[ $global:gListGroupNames['Devices'] ]
             If ($oResAssign.GetType().fullname -eq 'System.String') {
                 $oResAssign
                 $szLogLine = "Error assigning group " + $global:gListGroupNames['Devices'] + "to RoleScopeTag $global:gEntityScopeTag "
@@ -543,6 +610,9 @@ Function Create_Groups_Function
 
     Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : Country = $Country and Entity = $Entity"
     # Create Devices Groups Names
+    $UEMEntityAdmins = "SG.AZ." + $Country + "." + $Entity + "-UEM-EntityAdmins"
+    $UEMSupport = "SG.AZ." + $Country + "." + $Entity + "-UEM-Support"
+    $UEMReporting = "SG.AZ." + $Country + "." + $Entity + "-UEM-Reporting"
         $UEMUsers = "SG.AZ." + $Country + "." + $Entity + "-UEM-Users"
         $UEMKeyUsers = "SG.AZ." + $Country + "." + $Entity + "-UEM-Key-Users"
         $UEMAndroid = "SG.AZ." + $Country + "." + $Entity + "-UEM-Android"
@@ -554,6 +624,9 @@ Function Create_Groups_Function
         $GLBUEMIOS = "SG.AZ.GLB-UEM-IOS"
         $GLBUEMW10 = "SG.AZ.GLB-UEM-W10"
         $GLBUEMUsers = "SG.AZ.GLB-UEM-Users"
+        $GLBUEMEntityAdmins = "SG.AZ.GLB-UEM-EntityAdmins"
+        $GLBUEMSupport = "SG.AZ.GLB-UEM-Support"
+        $GLBUEMReporting = "SG.AZ.GLB-UEM-Reporting"
 
         $global:gUEMUsers = $UEMUsers               
         $global:gUEMKeyUsers = $UEMKeyUsers            
@@ -568,7 +641,7 @@ Function Create_Groups_Function
         $global:gGLBUEMUsers = $GLBUEMUsers 
          
     #Create AzureAD Groups if they do not exist
-    $GroupsToCreate = $UEMUsers,$UEMAdmins,$UEMAndroid,$UEMDevices,$UEMIOS,$UEMW10,$UEMReporting,$UEMSupport,$UEMKeyUsers,$GLBUEMW10,$GLBUEMAndroid,$GLBUEMIOS,$GLBUEMDevices,$GLBUEMUsers
+    $GroupsToCreate = $UEMUsers,$UEMAdmins,$UEMAndroid,$UEMDevices,$UEMIOS,$UEMW10,$UEMReporting,$UEMSupport,$UEMKeyUsers,$GLBUEMW10,$GLBUEMAndroid,$GLBUEMIOS,$GLBUEMDevices,$GLBUEMUsers,$UEMEntityAdmins,$UEMSupport,$UEMReporting
 
         foreach($GroupName in $GroupsToCreate){
                     $GroupExists = Get-AzureADGroup -SearchString $GroupName
@@ -624,6 +697,9 @@ Function Create_Groups_Function
     #Nests KeyUsers to Users Parent group
         Add-NestedGroup -Parent $UEMUsers -Child $UEMKeyUsers
         Add-NestedGroup -Parent $GLBUEMUsers -Child $UEMUsers
+        Add-NestedGroup -Parent $GLBUEMEntityAdmins -Child $UEMEntityAdmins
+        Add-NestedGroup -Parent $GLBUEMSupport -Child $UEMSupport
+        Add-NestedGroup -Parent $GLBUEMReporting -Child $UEMReporting
 
         $global:gListGroupIds = GetGroupAADIdsList
 }
@@ -634,7 +710,6 @@ Function GetGroupAADIdsList
     $hGroupIds = @{}
     Foreach ($oneGroupName in $global:gListGroupNames.Values)
     {
-        Write-Host '->'$oneGroupName
         $GroupObject = Get-AzureADGroup -SearchString $oneGroupName
         $hGroupIds.add($oneGroupName, $GroupObject.ObjectId)
     }
