@@ -207,7 +207,7 @@ $Tags.Visible                     = $false
 $Devices                         = New-Object system.Windows.Forms.Button
 $Devices.BackColor               = "#4a90e2"
 #$Devices.text                    = "Devices"
-$Devices.text                    = "Remove Groups"
+$Devices.text                    = "rm Groups"
 $Devices.width                   = 80
 $Devices.height                  = 30
 $Devices.location                = New-Object System.Drawing.Point(28,237)
@@ -427,28 +427,30 @@ Function Lauch_Viewer_Function
 
 Function Assign_Roles_Function
 {
-    Write-Host "Assigning role to entity admins and others"
-    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : NOT IMPLEMENTED YET : User selected to launch Assign Roles"
-    # needs variables: AdminRoleId, ReportRoleId, SupportRoleId, Entity Groups Ids, Entity ScopeTagId
-    #get intune role definitions (Global Ones...)
-    #We need to seek if role assignement exists already
-    #also gather rolescopetag id 
+    $szLine = 'Assigning role to entity admins and others'
+    Write-Host $szLine -ForegroundColor Yellow
+    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
+
     $szRoleDefinitionName = Get-UEMRoleDefinitionName -ForWhom 'EntityAdmins'
     $oRoleDefinitionGLBEntityAdmins = Get-IntuneRoleDefinition | Where-Object {($_.displayName).equals($szRoleDefinitionName)}
     
-    Write-Host "Now we will see if role already exists..."
+    #Verify if the roleDefinition Exists
     If ($null -eq $oRoleDefinitionGLBEntityAdmins ) {
-        $szLine = "Impossible to find the Role Definition named : 'GLB - Role - EntityAdmins'"
-        Write-Host $szLine
+        $szLine = "Impossible to find the Role Definition named : '"+$szRoleDefinitionName+"'"
+        Write-Host $szLine -ForegroundColor Red
         Write-UEMLogLine -Filename $global:gLogFile -Line "ERROR : $szLine"
         Return
     }
-    Write-Host "Now we will see if role assignment already exists..."
+    $szLine = "RoleDefinition with name $szRoleDefinitionName exists"
+    Write-Host $szLine -ForegroundColor Green
+    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
+
+    #Verify if role assignment already exists...
     $szRoleAssignmentName = Get-UEMRoleAssignmentName -Country $global:gCountry -Entity $global:gEntity -ForWhom 'EntityAdmins'
     $oRoleAssignmentEntityAdmins = Get-IntuneRoleAssignment | Where-Object {($_.displayName).equals($szRoleAssignmentName)}
     If ($null -ne $oRoleAssignmentEntityAdmins ) {
         $szLine = "The Role Assignment you want to create already exists... abording."
-        Write-Host $szLine
+        Write-Host $szLine -ForegroundColor Red
         Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
         Return
     }
@@ -461,7 +463,7 @@ Function Assign_Roles_Function
     #Write-Host 'Devices '$global:gListGroupIds[$global:gListGroupNames['Devices']]
     #From now on we know roleDefinition exists and RoleAssignment doesn't for this
     $szLine = 'Will Create the new RoleAssignemt ' + $szRoleAssignmentName
-    Write-Host $szLine
+    Write-Host $szLine - -ForegroundColor Yellow
     Write-UEMLogLine -Filename $global:gLogFile -Line $szLine
     New-IntuneBetaRoleAssignment -RoleDefinitionId $oRoleDefinitionGLBEntityAdmins.id `
     -DisplayName $szRoleAssignmentName -Description $szRoleAssignmentName `
@@ -472,12 +474,12 @@ Function Assign_Roles_Function
     $oRoleAssignmentEntityAdmins = Get-IntuneRoleAssignment | Where-Object {($_.displayName).equals($szRoleAssignmentName)}
     If ($null -eq $oRoleAssignmentEntityAdmins) {
         $szLine = 'RoleAssignment creation Error.'
-        Write-Host $szLine
-        Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
+        Write-Host $szLine -ForegroundColor Red
+        Write-UEMLogLine -Filename $global:gLogFile -Line "ERROR : $szLine"
         Return
     }
     $szLine = 'RoleAssignment with name : '+$szRoleAssignmentName+' created.'
-    Write-Host $szLine
+    Write-Host $szLine -ForegroundColor Green
     Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
 
     $oListRoleScopeTags = Get-IntuneBetaRoleScopeTags
@@ -491,28 +493,29 @@ Function Assign_Roles_Function
     }
     If ($nRoleScopeTagId -eq 0) {
         $szLine = 'Role Scope Tag with name '+$szRoleScopeTagName + ' not found, abording.'
-        Write-Host $szLine
-        Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
+        Write-Host $szLine -ForegroundColor Red
+        Write-UEMLogLine -Filename $global:gLogFile -Line "ERROR : $szLine"
         Return
     }
     #now we want to put the scopeTag
     $szLine = 'Will exexute AddIntuneBetaRoleAssignmentRoleScopeTag -Id '+$oRoleAssignmentEntityAdmins.id+' -RoleScopeTagId '+$nRoleScopeTagId
-    Write-Host $szLine
+    Write-Host $szLine -ForegroundColor Yellow
     Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
 
     Add-IntuneBetaRoleAssignmentRoleScopeTag -Id $oRoleAssignmentEntityAdmins.id -RoleScopeTagId $nRoleScopeTagId
 
     $oRoleAssignmentRoleScopeTag = Get-IntuneBetaRoleAssignmentRoleScopeTags -Id $oRoleAssignmentEntityAdmins.id
     If ($null -eq $oRoleAssignmentRoleScopeTag) {
-        $szLine = 'Error when assigning Scope ' + $szRoleScopeTagName + '' + $szRoleAssignmentName
-        Write-Host $szLine
+        $szLine = 'Error when assigning Scope ' + $szRoleScopeTagName + ' to ' + $szRoleAssignmentName
+        Write-Host $szLine -ForegroundColor Red
         Write-UEMLogLine -Filename $global:gLogFile -Line "ERROR : $szLine"
         Return
     
     }
 
-    $szLine = 'Scope tag '+$szRoleScopeTagName+' with Id: '+$oRoleAssignmentRoleScopeTag.id+' has been assgined to : '+$oRoleAssignmentEntityAdmins.displayName
-    Write-Host $szLine
+    $szLine = 'Scope tag '+$szRoleScopeTagName+' with Id: '+$oRoleAssignmentRoleScopeTag.id+' has been assgined to : ' `
+    +$oRoleAssignmentEntityAdmins.displayName
+    Write-Host $szLine -ForegroundColor Yellow
     Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
     
     Return
@@ -530,7 +533,7 @@ Function Add_Tags_Function
         If ($oResNewRoleScopeTag.GetType().fullname -eq 'System.String')
         {
             $oResNewRoleScopeTag
-            Write-host "Error: Error creating ScopeTag $global:gEntityScopeTag " -foregroundcolor Red
+            Write-host "Error creating ScopeTag $global:gEntityScopeTag " -foregroundcolor Red
             Write-UEMLogLine -Filename $global:gLogFile -Line "Error: Error creating ScopeTag $global:gEntityScopeTag"
         }
         Else
@@ -539,18 +542,14 @@ Function Add_Tags_Function
             Write-host $Line -ForegroundColor Green
             Write-UEMLogLine -Filename $global:gLogFile -Line "INFO: $Line"
             
-            Write-Host "Will invoke GetGroupAADIdsList"
-            
+            #get the list of UEM groups 
             if ($null -eq $global:gListGroupIds) {
                 $global:gListGroupIds = GetGroupAADIdsList
             }
-            Write-Host "done invoking GetGroupAADIdsList"
-            $global:gListGroupIds.keys | ForEach-Object{
-                $message = '{0} is {1} has id!' -f $_, $global:gListGroupIds[$_]
-                Write-Host $message
-            }
 
-            Write-Host "Will Invoke New-IntuneBetaRoleScopeTagGroupAssignment -Id "$oResNewRoleScopeTag.id" -GroupId "$global:gListGroupIds[$global:gListGroupNames['Devices']]
+            $szLine = "Will Invoke New-IntuneBetaRoleScopeTagGroupAssignment -Id "+$oResNewRoleScopeTag.id+" -GroupId "+$global:gListGroupIds[$global:gListGroupNames['Devices']]
+            Write-Host $szLine -ForegroundColor Yellow
+            Write-UEMLogLine -Filename $global:gLogFile -Line "INFO: $szLine"
             $oResAssign = New-IntuneBetaRoleScopeTagGroupAssignment -Id $oResNewRoleScopeTag.id -GroupId $global:gListGroupIds[ $global:gListGroupNames['Devices'] ]
             If ($oResAssign.GetType().fullname -eq 'System.String') {
                 $oResAssign
@@ -580,11 +579,11 @@ function Add-NestedGroup {
     param( [string]$Parent, [string]$Child )
     try {   
             Add-AzureADGroupMember -ObjectId $((Get-AzureADGroup -SearchString $Parent).ObjectID) -RefObjectId $((Get-AzureADGroup -SearchString $Child).ObjectID) 
-            Write-host "Info: Group $($Child) was Added to $($Parent) Group." -foregroundcolor Green
-            Write-UEMLogLine -Filename $global:gLogFile -Line "Info: Group $($Child) was Added to $($Parent) Group."}
+            Write-host "Info: Group $Child was Added to $Parent Group." -foregroundcolor Green
+            Write-UEMLogLine -Filename $global:gLogFile -Line "Info: Group $Child was Added to $Parent Group."}
         Catch {
-            Write-host "Error: Group $($Child) NOT Added to $($Parent) Group." -foregroundcolor Red
-            Write-UEMLogLine -Filename $global:gLogFile -Line "Error: Group $($Child) NOT Added to $($Parent) Group."}
+            Write-host "Error: Group $Child NOT Added to $Parent Group." -foregroundcolor Red
+            Write-UEMLogLine -Filename $global:gLogFile -Line "Error: Group $Child NOT Added to $Parent Group."}
 }
 
 
@@ -665,6 +664,7 @@ Function Remove_UEM_Groups
         {
             $oGroup = (Get-AzureADGroup -SearchString $oneGroupName)
             $szLine = "For " + $oneGroupName + " exec Remove-AzureADGroup -ObjectId "+ $oGroup.ObjectID
+            Write-Host $szLine -ForegroundColor Yellow
             Write-UEMLogLine -Filename $global:gLogFile -Line "INFO: $szLine"
 
             Try {
@@ -712,7 +712,12 @@ Function Onboard_Complete_Function
 
     Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : Creating Scope Tag..."
     Add_Tags_Function
-    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO :Done  Creating Scope Tag!"
+    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : Done  Creating Scope Tag!"
+
+    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : Creating Role Assignment..."
+    Assign_Roles_Function
+    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : Done  Creating Role Assignment"
+
 }
 
 
