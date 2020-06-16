@@ -205,8 +205,9 @@ $Tags.Visible                     = $false
 
 
 $Devices                         = New-Object system.Windows.Forms.Button
-#$Devices.BackColor               = "#4a90e2"
-$Devices.text                    = "Devices"
+$Devices.BackColor               = "#4a90e2"
+#$Devices.text                    = "Devices"
+$Devices.text                    = "Remove Groups"
 $Devices.width                   = 80
 $Devices.height                  = 30
 $Devices.location                = New-Object System.Drawing.Point(28,237)
@@ -325,7 +326,9 @@ $LogViewer.Add_Click({ Lauch_Viewer_Function })
 $DoItAll.Add_Click({ Onboard_Complete_Function })
 $Roles.Add_Click({ Assign_Roles_Function })
 $Tags.Add_Click({ Add_Tags_Function })
-$Devices.Add_Click({ Devices_To_Groups_Function })
+#$Devices.Add_Click({ Devices_To_Groups_Function })
+$Devices.Add_Click({ Remove_UEM_Groups })
+
 $Groups.Add_Click({ Create_Groups_Function })
 $Cancel.Add_Click({ Exit_Cancel})
 
@@ -344,12 +347,14 @@ Function Validate_Function
     If ($Country_Selected -match $szPattern -and $Country_Selected.Length -eq 2) {
         $CountryValidated = $true
         $global:gCountry = $Country_Selected.ToUpper()
-        write-host "User selected country: $Country_Selected" -ForegroundColor Green
-        Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : User selected country: $Country_Selected"
+        $szLine = "User selected country: "+$global:gCountry
+        write-host $szLine -ForegroundColor Green
+        Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
         Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : Country Validation passed: $CountryValidated"
     } Else {
-        write-host "User selected country: $Country_Selected" -ForegroundColor Red
-        Write-UEMLogLine -Filename $global:gLogFile -Line "WARNING : User selected country: $($Country_Selected)"
+        $szLine = "User selected country: "+$global:gCountry
+        write-host $szLine -ForegroundColor Red
+        Write-UEMLogLine -Filename $global:gLogFile -Line "WARNING : $szLine"
         Write-UEMLogLine -Filename $global:gLogFile -Line "WARNING : Country Validation passed: $CountryValidated"
     }
 
@@ -513,35 +518,6 @@ Function Assign_Roles_Function
     Return
 }
 
-
-Function New-IntuneBetaScopeTag () 
-{
-      [cmdletbinding()]
-
-      param
-      (
-          $ScopeTagName
-      )
-      
-      $graphApiVersion = "beta"
-      $Resource = "deviceManagement/roleScopeTags"
-          Write-host $ScopeTagName
-      $JSON = @"
-
-      {
-      "@odata.type": "#microsoft.graph.roleScopeTag",
-      "displayName": "$ScopeTagName",
-      "description": "$ScopeTagName",
-      "isBuiltIn": true
-      }
-
-"@
-          $uri = "https://graph.microsoft.com/$graphApiVersion/$Resource"
-          Invoke-MSGraphRequest -Url $uri -httpMethod Post -Content $JSON
-
-    
-}
-
 Function Add_Tags_Function
 {
     Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : User selected to launch Add Tags"
@@ -599,6 +575,19 @@ Function Add_Tags_Function
 
 
 
+
+function Add-NestedGroup {
+    param( [string]$Parent, [string]$Child )
+    try {   
+            Add-AzureADGroupMember -ObjectId $((Get-AzureADGroup -SearchString $Parent).ObjectID) -RefObjectId $((Get-AzureADGroup -SearchString $Child).ObjectID) 
+            Write-host "Info: Group $($Child) was Added to $($Parent) Group." -foregroundcolor Green
+            Write-UEMLogLine -Filename $global:gLogFile -Line "Info: Group $($Child) was Added to $($Parent) Group."}
+        Catch {
+            Write-host "Error: Group $($Child) NOT Added to $($Parent) Group." -foregroundcolor Red
+            Write-UEMLogLine -Filename $global:gLogFile -Line "Error: Group $($Child) NOT Added to $($Parent) Group."}
+}
+
+
 Function Create_Groups_Function
 {
     Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : User selected to launch Create Groups"
@@ -608,100 +597,89 @@ Function Create_Groups_Function
     $Entity_Selected = $TextBoxEntity.text
     $Entity = $Entity_Selected.ToUpper()
 
-    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : Country = $Country and Entity = $Entity"
+    $szLine = "Country = " + $global:gCountry + " and Entity = " + $global:gEntity
+    Write-UEMLogLine -Filename $global:gLogFile -Line "INFO : $szLine"
     # Create Devices Groups Names
-    $UEMEntityAdmins = "SG.AZ." + $Country + "." + $Entity + "-UEM-EntityAdmins"
-    $UEMSupport = "SG.AZ." + $Country + "." + $Entity + "-UEM-Support"
-    $UEMReporting = "SG.AZ." + $Country + "." + $Entity + "-UEM-Reporting"
-        $UEMUsers = "SG.AZ." + $Country + "." + $Entity + "-UEM-Users"
-        $UEMKeyUsers = "SG.AZ." + $Country + "." + $Entity + "-UEM-Key-Users"
-        $UEMAndroid = "SG.AZ." + $Country + "." + $Entity + "-UEM-Android"
-        $UEMDevices = "SG.AZ." + $Country + "." + $Entity + "-UEM-Devices" 
-        $UEMIOS = "SG.AZ." + $Country + "." + $Entity + "-UEM-iOS"
-        $UEMW10 = "SG.AZ." + $Country + "." + $Entity + "-UEM-W10"
-        $GLBUEMDevices= "SG.AZ.GLB-UEM-Devices"
-        $GLBUEMAndroid = "SG.AZ.GLB-UEM-Android"
-        $GLBUEMIOS = "SG.AZ.GLB-UEM-IOS"
-        $GLBUEMW10 = "SG.AZ.GLB-UEM-W10"
-        $GLBUEMUsers = "SG.AZ.GLB-UEM-Users"
-        $GLBUEMEntityAdmins = "SG.AZ.GLB-UEM-EntityAdmins"
-        $GLBUEMSupport = "SG.AZ.GLB-UEM-Support"
-        $GLBUEMReporting = "SG.AZ.GLB-UEM-Reporting"
-
-        $global:gUEMUsers = $UEMUsers               
-        $global:gUEMKeyUsers = $UEMKeyUsers            
-        $global:gUEMAndroid = $UEMAndroid             
-        $global:gUEMDevices = $UEMDevices             
-        $global:gUEMIOS = $UEMW10                 
-        $global:gUEMW10 = $UEMW10                 
-        $global:gGLBUEMDevices= $GLBUEMDevices           
-        $global:gGLBUEMAndroid = $GLBUEMAndroid          
-        $global:gGLBUEMIOS = $GLBUEMIOS              
-        $global:gGLBUEMW10 = $GLBUEMW10              
-        $global:gGLBUEMUsers = $GLBUEMUsers 
+    $hUEMGroupNames = Get-UEMGroupNames -Country $global:gCountry -Entity $global:gEntity
          
     #Create AzureAD Groups if they do not exist
-    $GroupsToCreate = $UEMUsers,$UEMAdmins,$UEMAndroid,$UEMDevices,$UEMIOS,$UEMW10,$UEMReporting,$UEMSupport,$UEMKeyUsers,$GLBUEMW10,$GLBUEMAndroid,$GLBUEMIOS,$GLBUEMDevices,$GLBUEMUsers,$UEMEntityAdmins,$UEMSupport,$UEMReporting
-
-        foreach($GroupName in $GroupsToCreate){
-                    $GroupExists = Get-AzureADGroup -SearchString $GroupName
-                    if ($NULL -ne $GroupExists) 
-                            {Write-Host "Warning: Group $($GroupName) already exists." -foregroundcolor Yellow
-                            Write-UEMLogLine -Filename $global:gLogFile -Line "Warning: Group $($GroupName) already exists."}
-                    else {
-                            #Create Group
-                            try {
-                                New-AzureADGroup -DisplayName $GroupName -MailEnabled $false -MailNickName $GroupName -SecurityEnabled $true
-                                Write-host "Info: Group $($GroupName) created." -foregroundcolor Green
-                                Write-UEMLogLine -Filename $global:gLogFile -Line "Info: Group $($GroupName) created."}
-                            Catch {
-                                Write-host "Error: Error creating Group $($GroupName) " -foregroundcolor Red
-                                Write-UEMLogLine -Filename $global:gLogFile -Line "Error: Error creating Group $($GroupName)"}
-                            #Add Owners        
-                            try {
-                                Add-AzureADGroupOwner -ObjectId (Get-AzureADGroup -SearchString $GroupName).ObjectID -RefObjectId (Get-AzureADUser -SearchString '_pjoubert.AZ').ObjectID
-                                Write-host "Info: _pjoubert.AZ added as owner of Group $($GroupName)." -foregroundcolor Green
-                                Write-UEMLogLine -Filename $global:gLogFile -Line "Info: _pjoubert.AZ added as owner of Group $($GroupName)."
-                                Add-AzureADGroupOwner -ObjectId (Get-AzureADGroup -SearchString $GroupName).ObjectID -RefObjectId (Get-AzureADUser -SearchString '_jpigeret.AZ').ObjectID
-                                Write-host "Info: _jpigeret.AZ added as owner of Group $($GroupName)." -foregroundcolor Green
-                                Write-UEMLogLine -Filename $global:gLogFile -Line "Info: _jpigeret.AZ added as owner of Group $($GroupName)."}
-                            catch {
-                                Write-host "Error: PJO/JPI NOT added as owners of Group $($GroupName)." -foregroundcolor Red
-                                Write-UEMLogLine -Filename $global:gLogFile -Line "Error: PJO/JPI NOT added as owners of Group $($GroupName)."}
-                        }
-                }
 
 
-
-
-    function Add-NestedGroup {
-        param( [string]$Parent, [string]$Child )
-        try {   
-                Add-AzureADGroupMember -ObjectId $((Get-AzureADGroup -SearchString $Parent).ObjectID) -RefObjectId $((Get-AzureADGroup -SearchString $Child).ObjectID) 
-                Write-host "Info: Group $($Child) was Added to $($Parent) Group." -foregroundcolor Green
-                Write-UEMLogLine -Filename $global:gLogFile -Line "Info: Group $($Child) was Added to $($Parent) Group."}
-            Catch {
-                Write-host "Error: Group $($Child) NOT Added to $($Parent) Group." -foregroundcolor Red
-                Write-UEMLogLine -Filename $global:gLogFile -Line "Error: Group $($Child) NOT Added to $($Parent) Group."}
+    foreach($GroupName in $hUEMGroupNames.Values) 
+    {
+        $GroupExists = Get-AzureADGroup -SearchString $GroupName
+        if ($NULL -ne $GroupExists) 
+                {Write-Host "Warning: Group $($GroupName) already exists." -foregroundcolor Yellow
+                Write-UEMLogLine -Filename $global:gLogFile -Line "Warning: Group $($GroupName) already exists."}
+        else {
+                #Create Group
+                try {
+                    New-AzureADGroup -DisplayName $GroupName -MailEnabled $false -MailNickName $GroupName -SecurityEnabled $true
+                    Write-host "Info: Group $($GroupName) created." -foregroundcolor Green
+                    Write-UEMLogLine -Filename $global:gLogFile -Line "Info: Group $($GroupName) created."}
+                Catch {
+                    Write-host "Error: Error creating Group $($GroupName) " -foregroundcolor Red
+                    Write-UEMLogLine -Filename $global:gLogFile -Line "Error: Error creating Group $($GroupName)"}
+                #Add Owners        
+                try {
+                    Add-AzureADGroupOwner -ObjectId (Get-AzureADGroup -SearchString $GroupName).ObjectID -RefObjectId (Get-AzureADUser -SearchString '_pjoubert.AZ').ObjectID
+                    Write-host "Info: _pjoubert.AZ added as owner of Group $($GroupName)." -foregroundcolor Green
+                    Write-UEMLogLine -Filename $global:gLogFile -Line "Info: _pjoubert.AZ added as owner of Group $($GroupName)."
+                    Add-AzureADGroupOwner -ObjectId (Get-AzureADGroup -SearchString $GroupName).ObjectID -RefObjectId (Get-AzureADUser -SearchString '_jpigeret.AZ').ObjectID
+                    Write-host "Info: _jpigeret.AZ added as owner of Group $($GroupName)." -foregroundcolor Green
+                    Write-UEMLogLine -Filename $global:gLogFile -Line "Info: _jpigeret.AZ added as owner of Group $($GroupName)."}
+                catch {
+                    Write-host "Error: PJO/JPI NOT added as owners of Group $($GroupName)." -foregroundcolor Red
+                    Write-UEMLogLine -Filename $global:gLogFile -Line "Error: PJO/JPI NOT added as owners of Group $($GroupName)."}
+            }
     }
 
     #Nests IOS,Android and W10 groups into Devices parent group
     #Nest each local group in Global group
-        Add-NestedGroup -Parent $UEMDevices -Child $UEMAndroid
-        Add-NestedGroup -Parent $UEMDevices -Child $UEMIOS
-        Add-NestedGroup -Parent $UEMDevices -Child $UEMW10
-        Add-NestedGroup -Parent $GLBUEMDevices -Child $UEMDevices
-        Add-NestedGroup -Parent $GLBUEMAndroid -Child $UEMAndroid
-        Add-NestedGroup -Parent $GLBUEMIOS -Child $UEMIOS
-        Add-NestedGroup -Parent $GLBUEMW10 -Child $UEMW10
+    Add-NestedGroup -Parent $hUEMGroupNames["Devices"] -Child $hUEMGroupNames["Android"]
+    Add-NestedGroup -Parent $hUEMGroupNames["Devices"] -Child $hUEMGroupNames["iOS"]
+    Add-NestedGroup -Parent $hUEMGroupNames["Devices"] -Child $hUEMGroupNames["W10"]
+    Add-NestedGroup -Parent $hUEMGroupNames["GLBDevices"] -Child $hUEMGroupNames["Devices"]
+    Add-NestedGroup -Parent $hUEMGroupNames["GLBAndroid"] -Child $hUEMGroupNames["Android"]
+    Add-NestedGroup -Parent $hUEMGroupNames["GLBiOS"] -Child $hUEMGroupNames["iOS"]
+    Add-NestedGroup -Parent $hUEMGroupNames["GLBW10"] -Child $hUEMGroupNames["W10"]
     #Nests KeyUsers to Users Parent group
-        Add-NestedGroup -Parent $UEMUsers -Child $UEMKeyUsers
-        Add-NestedGroup -Parent $GLBUEMUsers -Child $UEMUsers
-        Add-NestedGroup -Parent $GLBUEMEntityAdmins -Child $UEMEntityAdmins
-        Add-NestedGroup -Parent $GLBUEMSupport -Child $UEMSupport
-        Add-NestedGroup -Parent $GLBUEMReporting -Child $UEMReporting
+    Add-NestedGroup -Parent $hUEMGroupNames["Users"] -Child $hUEMGroupNames["Key-Users"]
+    Add-NestedGroup -Parent $hUEMGroupNames["GLBUsers"] -Child $hUEMGroupNames["Users"]
+    Add-NestedGroup -Parent $hUEMGroupNames["GLBEntityAdmins"] -Child $hUEMGroupNames["EntityAdmins"]
+    Add-NestedGroup -Parent $hUEMGroupNames["GLBSupport"] -Child $hUEMGroupNames["Support"]
+    Add-NestedGroup -Parent $hUEMGroupNames["GLBReporting"] -Child $hUEMGroupNames["Reporting"]
 
-        $global:gListGroupIds = GetGroupAADIdsList
+    $global:gListGroupIds = GetGroupAADIdsList
+}
+
+
+Function Remove_UEM_Groups
+{
+    $hUEMGroupNames = Get-UEMGroupNames -Country $global:gCountry -Entity $global:gEntity
+         
+    #Create AzureAD Groups if they do not exist
+    foreach($oneGroupName in $hUEMGroupNames.Values) 
+    {
+        if ( $oneGroupName -notlike "*GLB*"  )
+        {
+            $oGroup = (Get-AzureADGroup -SearchString $oneGroupName)
+            $szLine = "For " + $oneGroupName + " exec Remove-AzureADGroup -ObjectId "+ $oGroup.ObjectID
+            Write-UEMLogLine -Filename $global:gLogFile -Line "INFO: $szLine"
+
+            Try {
+                Remove-AzureADGroup -ObjectId $oGroup.ObjectID
+                $szLine = "Removed group $oneGroupName"
+                Write-Host $szLine -ForegroundColor Green
+                Write-UEMLogLine -Filename $global:gLogFile -Line "INFO: $szLine"
+            } Catch {
+                $szLine = "Couldn't remove group $oneGroupName"
+                Write-Host $szLine -ForegroundColor Red
+                Write-UEMLogLine -Filename $global:gLogFile -Line "ERROR: $szLine"
+            }
+        }
+    }
+    Return
 }
 
 Function GetGroupAADIdsList
