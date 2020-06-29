@@ -776,7 +776,7 @@ Function Done_Exit
     $adminSecurePassword = $adminPassword | ConvertTo-SecureString -AsPlainText -Force
 
     $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ($adminUsername, $adminSecurePassword)
-    Write-Host "Authenticate with"$adminUsername", "$adminPassword
+    #Write-Host "Authenticate with"$adminUsername", "$adminPassword
     Connect-MSGraph -PSCredential $creds
     Connect-IntuneBeta -Username $adminUsername -Password $adminPassword -Domain 'tsodexo.com'
     Connect-AzureAD -Credential $creds

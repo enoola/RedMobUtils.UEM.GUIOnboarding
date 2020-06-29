@@ -622,7 +622,7 @@ Function Create_Groups_Function
                 #Add Owners        
                 try {
                     Add-AzureADGroupOwner -ObjectId (Get-AzureADGroup -SearchString $GroupName).ObjectID -RefObjectId (Get-AzureADUser -SearchString '_pjoubert.AZ').ObjectID
-                    Write-host "Info: _pjoubert.AZ added as owner of Group $($GroupName)." -foregroundcolor Green
+                    Write-host "Info: _pjoubert.AZ added as owner of Group $GroupName." -foregroundcolor Green
                     Write-UEMLogLine -Filename $global:gLogFile -Line "Info: _pjoubert.AZ added as owner of Group $($GroupName)."
                     Add-AzureADGroupOwner -ObjectId (Get-AzureADGroup -SearchString $GroupName).ObjectID -RefObjectId (Get-AzureADUser -SearchString '_jpigeret.AZ').ObjectID
                     Write-host "Info: _jpigeret.AZ added as owner of Group $($GroupName)." -foregroundcolor Green
